@@ -1,15 +1,27 @@
-FROM ubuntu
+# Stage 1
 
-RUN apt-get update
-RUN apt-get install -y curl
-RUN curl -sL https://deb.nodesource.com/setup_18.x | bash -
-RUN apt-get upgrade -y
-RUN apt-get install -y nodejs
+FROM node:18 as builder
 
-COPY package.json package.json
-COPY package-lock.json package-lock.json
-COPY main.js main.js
+WORKDIR /build
 
+COPY package*.json .
 RUN npm install
 
-ENTRYPOINT [ "node", "main.js" ]
+COPY src/ src/
+COPY tsconfig.json tsconfig.json
+
+RUN npm run build
+
+
+
+# Stage 2
+
+FROM node:18 as runner
+
+WORKDIR /app
+
+COPY --from=builder build/package*.json .
+COPY --from=builder build/node_modules node_modules/
+COPY --from=builder build/dist dist/
+
+CMD [ "npm", "start" ]
